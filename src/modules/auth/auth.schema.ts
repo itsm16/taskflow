@@ -1,8 +1,18 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, uuid } from "drizzle-orm/pg-core";
+
+export const orgTable = pgTable("organizations", {
+  id: uuid().primaryKey().defaultRandom(),
+  name: varchar({ length: 255 }).notNull(),
+});
+
+export const orgMembersTable = pgTable("organization_members", {
+  id: uuid().primaryKey().defaultRandom(),
+  assigned_organization: uuid().references(() => orgTable.id).notNull(),
+  user_id: uuid().references(() => usersTable.id).notNull(),
+});
 
 export const usersTable = pgTable("users", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  id: uuid().primaryKey().defaultRandom(),
   name: varchar({ length: 255 }).notNull(),
-  age: integer().notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
 });

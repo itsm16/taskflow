@@ -3,8 +3,9 @@ import ApiError from "../../common/utils/api-error.js"
 import { assertTenant } from "../../common/utils/assert-tenant.js"
 import { projectTable } from "./project.schema.js"
 import { and, eq, isNull } from "drizzle-orm"
+import type { CreateProjectDtoType, UpdateProjectInput, GetProjectDtoType, GetOrgProjectsDtoType, DeleteProjectDtoType } from "./dto/project.dto.js"
 
-const createProject = async ({name, orgId}: {name: string, orgId: string}) => {
+const createProject = async ({name, orgId}: CreateProjectDtoType) => {
     if(!name || !orgId) {
         throw ApiError.badRequest("Name and organization ID are required")
     }
@@ -21,7 +22,7 @@ const createProject = async ({name, orgId}: {name: string, orgId: string}) => {
     return project
 }
 
-const getProject = async ({projectId, orgId}: {projectId: string, orgId: string}) => {
+const getProject = async ({projectId, orgId}: GetProjectDtoType) => {
     if(!projectId || !orgId) {
         throw ApiError.badRequest("Project ID and organization ID are required")
     }
@@ -44,7 +45,7 @@ const getProject = async ({projectId, orgId}: {projectId: string, orgId: string}
     return project
 }
 
-const getOrgProjects = async ({orgId}: {orgId: string}) => {
+const getOrgProjects = async ({orgId}: GetOrgProjectsDtoType) => {
     if(!orgId) {
         throw ApiError.badRequest("Organization ID is required")
     }
@@ -60,7 +61,7 @@ const getOrgProjects = async ({orgId}: {orgId: string}) => {
     return projects
 }
 
-const updateProject = async ({projectId, name, orgId}: {projectId: string, name?: string | undefined, orgId?: string | undefined}) => {
+const updateProject = async ({projectId, name, orgId}: UpdateProjectInput) => {
     if(!projectId || !orgId) {
         throw ApiError.badRequest("Project ID and organization ID are required")
     }
@@ -106,7 +107,7 @@ const updateProject = async ({projectId, name, orgId}: {projectId: string, name?
     return project
 }
 
-const deleteProject = async ({projectId, orgId}: {projectId: string, orgId: string}) => {
+const deleteProject = async ({projectId, orgId}: DeleteProjectDtoType) => {
     if(!projectId || !orgId) {
         throw ApiError.badRequest("Project ID and organization ID are required")
     }

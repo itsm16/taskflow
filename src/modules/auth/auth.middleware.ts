@@ -62,7 +62,7 @@ const checkRole = (roles: string[]): AuthHandler => {
 
 const checkOrg = (): AuthHandler => {
     return async (req, res, next) => {
-        const orgId = req.body?.orgId ?? req.params.orgId ?? req.query.orgId
+        const orgId = req.body?.orgId ?? (req.params as any)?.orgId ?? (req.query as any)?.orgId
         const user = (req as AuthedRequest).user
 
         if(!user?.id || !orgId){

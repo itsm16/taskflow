@@ -4,6 +4,7 @@ import { assertTenant } from "../../common/utils/assert-tenant.js"
 import { projectTable } from "../project/project.schema.js"
 import { tasksTable } from "./task.schema.js"
 import { and, eq, isNull } from "drizzle-orm"
+import type { CreateTaskDtoType, UpdateTaskInput, GetTaskDtoType, GetProjectTasksDtoType, DeleteTaskDtoType } from "./dto/task.dto.js"
 
 const TASK_STATUSES = ["todo", "in_progress", "review", "done"] as const
 const TASK_PRIORITIES = ["low", "medium", "high", "urgent"] as const
@@ -11,7 +12,7 @@ const TASK_PRIORITIES = ["low", "medium", "high", "urgent"] as const
 type TaskStatus = (typeof TASK_STATUSES)[number]
 type TaskPriority = (typeof TASK_PRIORITIES)[number]
 
-const createTask = async ({name, description, projectId, orgId}: {name: string, description?: string | undefined, projectId: string, orgId: string}) => {
+const createTask = async ({name, description, projectId, orgId}: CreateTaskDtoType) => {
     if(!name || !projectId || !orgId) {
         throw ApiError.badRequest("Name, project ID and organization ID are required")
     }
@@ -45,7 +46,7 @@ const createTask = async ({name, description, projectId, orgId}: {name: string, 
     return task
 }
 
-const getTask = async ({taskId, orgId}: {taskId: string, orgId: string}) => {
+const getTask = async ({taskId, orgId}: GetTaskDtoType) => {
     if(!taskId || !orgId) {
         throw ApiError.badRequest("Task ID and organization ID are required")
     }
@@ -68,7 +69,7 @@ const getTask = async ({taskId, orgId}: {taskId: string, orgId: string}) => {
     return task
 }
 
-const getProjectTasks = async ({projectId, orgId}: {projectId: string, orgId: string}) => {
+const getProjectTasks = async ({projectId, orgId}: GetProjectTasksDtoType) => {
     if(!projectId || !orgId) {
         throw ApiError.badRequest("Project ID and organization ID are required")
     }
@@ -99,7 +100,7 @@ const getProjectTasks = async ({projectId, orgId}: {projectId: string, orgId: st
     return tasks
 }
 
-const updateTask = async ({taskId, name, description, status, priority, orgId}: {taskId: string, name?: string | undefined, description?: string | undefined, status?: string | undefined, priority?: string | undefined, orgId: string}) => {
+const updateTask = async ({taskId, name, description, status, priority, orgId}: UpdateTaskInput) => {
     if(!taskId || !orgId) {
         throw ApiError.badRequest("Task ID and organization ID are required")
     }
@@ -163,7 +164,7 @@ const updateTask = async ({taskId, name, description, status, priority, orgId}: 
     return task
 }
 
-const deleteTask = async ({taskId, orgId}: {taskId: string, orgId: string}) => {
+const deleteTask = async ({taskId, orgId}: DeleteTaskDtoType) => {
     if(!taskId || !orgId) {
         throw ApiError.badRequest("Task ID and organization ID are required")
     }

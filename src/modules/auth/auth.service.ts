@@ -3,7 +3,7 @@ import { db } from "../../common/db/index.js"
 import ApiError from "../../common/utils/api-error.js"
 import { verifyToken } from "./auth.middleware.js"
 import { orgMembersTable, usersTable } from "./auth.schema.js"
-import type { RegisterDtoType, Token, User } from "./dto/auth.dto.js"
+import type { RegisterDtoType, LoginDtoType, Token, User, AddMemberInput, UpdateMemberInput, RemoveMemberInput, GetMembersDtoType } from "./dto/auth.dto.js"
 import bcrypt from "bcrypt"
 import { and, eq } from "drizzle-orm"
 import JWT from "jsonwebtoken"
@@ -50,7 +50,7 @@ const register = async ({email, name, password}: RegisterDtoType) => {
     };
 }
 
-const login = async ({email, password}: {email: string, password: string}) => {
+const login = async ({email, password}: LoginDtoType) => {
     if(!email || !password) {
         return ApiError.badRequest("Email and password are required")
     }
@@ -179,7 +179,7 @@ const logout = async (cookies: {tokens: {refresh_token: string}}) => {
     return
 }
 
-const addMember = async ({userId, orgId}: {userId: string, orgId: string}) => {
+const addMember = async ({userId, orgId}: AddMemberInput) => {
     if(!userId || !orgId) {
         throw ApiError.badRequest("User ID and organization ID are required")
     }
@@ -225,7 +225,7 @@ const addMember = async ({userId, orgId}: {userId: string, orgId: string}) => {
     return member
 }
 
-const getMembers = async ({orgId}: {orgId: string}) => {
+const getMembers = async ({orgId}: GetMembersDtoType) => {
     if(!orgId) {
         throw ApiError.badRequest("Organization ID is required")
     }
@@ -246,7 +246,7 @@ const getMembers = async ({orgId}: {orgId: string}) => {
     return members
 }
 
-const updateMember = async ({userId, orgId}: {userId: string, orgId: string}) => {
+const updateMember = async ({userId, orgId}: UpdateMemberInput) => {
     if(!userId || !orgId) {
         throw ApiError.badRequest("User ID and organization ID are required")
     }
@@ -267,7 +267,7 @@ const updateMember = async ({userId, orgId}: {userId: string, orgId: string}) =>
     return member
 }
 
-const removeMember = async ({userId, orgId}: {userId: string, orgId: string}) => {
+const removeMember = async ({userId, orgId}: RemoveMemberInput) => {
     if(!userId || !orgId) {
         throw ApiError.badRequest("User ID and organization ID are required")
     }

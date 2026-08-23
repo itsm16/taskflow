@@ -9,8 +9,8 @@ class ApiResponse{
         return res.status(200).json({ message, data: data || null })
     }
 
-    static notFound(res: Response, message = "Not found"){
-        return res.status(404).json({ message })
+    static notFound(res: Response, message = "Not found", data?: any){
+        return res.status(404).json({ message, data: data || null })
     }
 }
 

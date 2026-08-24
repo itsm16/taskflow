@@ -2,6 +2,15 @@
 
 Multi-tenant Project & Task API (Express 5 + Drizzle + BullMQ).
 
+### live
+```
+https://taskflow-eight-kohl.vercel.app/
+```
+### api collection
+```
+https://drive.google.com/file/d/1ErRxP7pK3cePBuKWApn8rexVFCHa0BDI/view?usp=sharing
+```
+
 ## Prerequisites
 - Docker 29+ & Docker Compose 5.4+
 - Node 26 / pnpm 11 (only for local dev without Docker)

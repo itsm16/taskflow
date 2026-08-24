@@ -16,7 +16,7 @@ import type { NextFunction, Request, Response } from 'express'
 
 const PORT = process.env.PORT || 8000
 
-const app = express()
+const app: express.Express = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
@@ -24,6 +24,15 @@ app.use(cookieParser())
 app.use("/api/auth", authRoutes)
 app.use("/api/project", projectRoutes)
 app.use("/api/task", taskRoutes)
+
+app.get("/", (req, res) => {
+    res.json({
+        status: "ok",
+        message: "Taskflow API — see /docs and /health",
+        docs: "/docs",
+        health: "/health"
+    })
+})
 
 app.get("/health", (req, res)=>{
     res.json({
@@ -71,6 +80,10 @@ app.use("/docs", swagger.serve, swagger.setup(undefined, {
     swaggerOptions: { url: '/v1/api-doc.json' }
 }))
 
-app.listen(PORT, () => {
-  console.log('Server started on port: ' + PORT)
-})
+export default app
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log('Server started on port: ' + PORT)
+  })
+}

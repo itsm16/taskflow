@@ -1,0 +1,1342 @@
+{
+  "info": {
+    "name": "grub",
+    "_postman_id": "40112077-6a4db9f3-f728-4a75-a71e-ceb42fdcf669",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Taskflow multi-tenant API \u2014 all endpoints tested against http://localhost:3000 (see grub collection). Auth is cookie-based (tokens cookie). Login request auto-saves accessToken/refreshToken/userId. Project/Task requests use {{orgId}} (Acme) and {{projectId}}/{{taskId}} auto-captured.\n\nHow to use:\n1. Import this file into Postman (File > Import).\n2. Run 'Auth > Login - Alice' (sets cookies automatically via Set-Cookie header). Postman will store 'tokens' cookie for subsequent requests.\n3. Run Project/Task flows in order: Create Project -> Get Org Projects -> Get/Update/Delete Project; Create Task -> List -> Get/Update/Delete Task; Members: Add/List/Update/Remove.\n\nSeed users (password: password123): alice@taskflow.dev (org_admin Acme), bob@taskflow.dev, carol@taskflow.dev, dave@taskflow.dev (org_admin Globex), eve@taskflow.dev. Orgs: Acme Corp (b237e9cc-...) , Globex Inc (cda8a6fd-...)."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "orgId",
+      "value": "b237e9cc-ffd2-4dc6-ad32-989876a9fc7e",
+      "type": "string",
+      "description": "Acme Corp organization (from Alice). Use cda8a6fd-1947-4511-b1b4-c750ffed1b27 for Globex."
+    },
+    {
+      "key": "orgId2",
+      "value": "cda8a6fd-1947-4511-b1b4-c750ffed1b27",
+      "type": "string",
+      "description": "Globex Inc"
+    },
+    {
+      "key": "projectId",
+      "value": "83729b12-bafa-415e-b2cf-9120e928b51f",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Target userId for Members endpoints (e.g., newly registered user). Auto-set on Login."
+    },
+    {
+      "key": "newUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "GET http://localhost:3000/health \u2014 no auth. Returns {status: ok}. Not under /api basePath."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Job Queue Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs"
+              ]
+            },
+            "description": "GET /api/jobs \u2014 BullMQ counts (uses Redis). No auth. Returns {counts, jobs}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "OpenAPI Spec",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/api-doc.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "api-doc.json"
+              ]
+            },
+            "description": "GET /v1/api-doc.json \u2014 full Swagger 2.0 spec with definitions. Use to verify basePath /api and all paths."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Swagger UI (docs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/docs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "description": "GET /docs \u2014 Swagger UI served via swagger-ui-express. Open in browser http://localhost:3000/docs"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Swagger UI 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "POST /api/auth/register \u2014 body {name, email, password}. Creates user, 409 if email exists. Email triggers BullMQ welcome mail (check /api/jobs). Test creates random email if you change it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grub Tester\",\n  \"email\": \"{{dynEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "let e = `grub_${Date.now()}@example.com`;",
+                  "pm.collectionVariables.set('dynEmail', e);",
+                  "console.log('Register email', e);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Register 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201,409]));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('newUserId', j.data.id);",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Alice (Acme Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "POST /api/auth/login \u2014 body {email, password}. Sets httpOnly cookie 'tokens' {access_token, refresh_token}. Response also returns accessToken/refreshToken. Postman auto-stores cookie for subsequent requests. This login maps to org acme (b237e9cc...). Subsequent Project/Task calls need that orgId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@taskflow.dev\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login 200\", () => pm.response.to.have.status(200));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.accessToken) {",
+                  "  pm.collectionVariables.set(\"accessToken\", j.data.accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", j.data.refreshToken);",
+                  "  if(j.data.user) pm.collectionVariables.set(\"userId\", j.data.user.id);",
+                  "}",
+                  "console.log(\"Login response:\", j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Bob (Member)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "POST /api/auth/login as Bob (member, not admin). Useful to test 403 on Project/Members endpoints (requires org_admin).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bob@taskflow.dev\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login 200\", () => pm.response.to.have.status(200));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.accessToken) {",
+                  "  pm.collectionVariables.set(\"accessToken\", j.data.accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", j.data.refreshToken);",
+                  "  if(j.data.user) pm.collectionVariables.set(\"userId\", j.data.user.id);",
+                  "}",
+                  "console.log(\"Login response:\", j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Dave (Globex Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "POST /api/auth/login as Dave (org_admin of Globex cda8a6fd...). Use with orgId2 to test cross-tenant 403.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dave@taskflow.dev\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login 200\", () => pm.response.to.have.status(200));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.accessToken) {",
+                  "  pm.collectionVariables.set(\"accessToken\", j.data.accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", j.data.refreshToken);",
+                  "  if(j.data.user) pm.collectionVariables.set(\"userId\", j.data.user.id);",
+                  "}",
+                  "console.log(\"Login response:\", j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "POST /api/auth/refresh \u2014 no body. Reads refresh_token from 'tokens' cookie (automatically sent by Postman). Rotates tokens and sets new cookie. Test: call after Login, then verify new accessToken."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Refresh 200\", () => pm.response.to.have.status(200));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.accessToken) {",
+                  "  pm.collectionVariables.set(\"accessToken\", j.data.accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", j.data.refreshToken);",
+                  "}",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Members (Auth - Members)",
+      "description": "All Members endpoints require: checkToken() + checkRole([org_admin]) + checkOrg(). So you must be logged in as org_admin (Alice for Acme, Dave for Globex) and send orgId that matches your token's org_id. AddMember/UpdateMember send orgId in JSON body; GetMembers uses :orgId path param; RemoveMember uses query ?orgId=.",
+      "item": [
+        {
+          "name": "Login - Alice (Re-auth for Members/Projects/Tasks)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@taskflow.dev\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Re-login as Alice to ensure orgId Acme matches token for subsequent Members/Project/Task tests. Dave login earlier switches token to Globex."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Re-login 200', () => pm.response.to.have.status(200));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.accessToken){ pm.collectionVariables.set('accessToken', j.data.accessToken); pm.collectionVariables.set('refreshToken', j.data.refreshToken); }",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Members - Acme",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{orgId}}"
+              ]
+            },
+            "description": "GET /api/auth/members/:orgId \u2014 List all members of organization. Path param is orgId. Requires org_admin + membership. Example: {{orgId}} should equal your token's org_id (Alice->Acme)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{newUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{newUserId}}"
+              ]
+            },
+            "description": "POST /api/auth/members/:userId \u2014 Add existing user to org. Body {orgId}. Path :userId is the user to add (use {{newUserId}} from Register, or bob's id). Requires org_admin. Sends email notification via BullMQ (check /api/jobs). 409 if already member.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Add Member 200/201\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "let j = pm.response.json();",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Member",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{newUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{newUserId}}"
+              ]
+            },
+            "description": "PUT /api/auth/members/:userId \u2014 Update member's organization assignment. Body {orgId}. Useful to move user between orgs. Requires org_admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{newUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{newUserId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}",
+                  "description": "Query param - organization to remove from"
+                }
+              ]
+            },
+            "description": "DELETE /api/auth/members/:userId?orgId={{orgId}} \u2014 Remove user from org. orgId passed as QUERY param (not body): ?orgId={{orgId}}. Requires org_admin."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Members - Globex",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{orgId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{orgId2}}"
+              ]
+            },
+            "description": "GET /api/auth/members/:orgId for Globex (requires Dave login). Use to verify cross-tenant isolation \u2014 Alice token requesting Globex should 403."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List Globex 200 or 403', () => pm.expect(pm.response.code).to.be.oneOf([200,403])); console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Member - Cross-Tenant 403 Demo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/members/{{newUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "members",
+                "{{newUserId}}"
+              ]
+            },
+            "description": "POST as Alice (Acme admin) but body orgId = Globex {{orgId2}} \u2014 should 403 (checkOrg fails). Login as Alice then try this to demo tenant guard.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgId\": \"{{orgId2}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cross-tenant 403', () => pm.expect(pm.response.code).to.be.oneOf([403,401])); console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Project",
+      "description": "All Project endpoints require checkToken()+checkRole([org_admin])+checkOrg(). orgId must match token's org_id and project's organization_id. Create/Update send orgId in body; Get/Delete use query ?orgId=. Deleted projects are soft-deleted (deleted_at set).",
+      "item": [
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/project",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project"
+              ]
+            },
+            "description": "POST /api/project \u2014 body {name, orgId}. Requires org_admin. Returns 201 {id, name, organization_id}. Sets {{projectId}} via test script.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Website Redesign\",\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create Project 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('projectId', j.data.id);",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Org Projects - Acme",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/project/org/{{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project",
+                "org",
+                "{{orgId}}"
+              ]
+            },
+            "description": "GET /api/project/org/:orgId \u2014 List all non-deleted projects of org. Requires org_admin + checkOrg."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/project/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project",
+                "{{projectId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            },
+            "description": "GET /api/project/:projId?orgId={{orgId}} \u2014 Fetch single project. orgId query required for tenant isolation (403 if cross-tenant)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/project/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project",
+                "{{projectId}}"
+              ]
+            },
+            "description": "PUT /api/project/:projId \u2014 body {name?, orgId}. orgId must match row's organization_id (cross-tenant -> 403).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Website v2\",\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Org Projects - Globex (Cross-Check)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/project/org/{{orgId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project",
+                "org",
+                "{{orgId2}}"
+              ]
+            },
+            "description": "GET Globex projects \u2014 should 403 if logged in as Alice (Acme). Login as Dave to get 200."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 or 403', () => pm.expect(pm.response.code).to.be.oneOf([200,403])); console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Task",
+      "description": "Task endpoints require checkToken()+checkOrg() (no role check \u2014 any org member can manage tasks). Cross-tenant guarded via orgId + project tenant. Create/Update send orgId in body; Get/Delete/List use query ?orgId=. Tasks belong to project + org.",
+      "item": [
+        {
+          "name": "Create Project for Task (setup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/project",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Task Test Project\",\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a fresh project that will be used for Task CRUD. Sets {{projectId}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create Project for Task 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.id){ pm.collectionVariables.set('projectId', j.data.id); pm.collectionVariables.set('taskProjectId', j.data.id); }",
+                  "console.log('Task project', j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/task",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task"
+              ]
+            },
+            "description": "POST /api/task \u2014 body {name, projectId, orgId, description?}. projectId must belong to orgId (else 403/404). Returns 201. Sets {{taskId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Design new homepage\",\n  \"description\": \"Figma mockups for landing page\",\n  \"projectId\": \"{{projectId}}\",\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create Task 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "let j = pm.response.json();",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('taskId', j.data.id);",
+                  "console.log(j);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Project Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/task/project/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task",
+                "project",
+                "{{projectId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            },
+            "description": "GET /api/task/project/:projectId?orgId={{orgId}} \u2014 List tasks of project (tenant-scoped)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List Tasks 200', () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/task/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task",
+                "{{taskId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            },
+            "description": "GET /api/task/:taskId?orgId={{orgId}} \u2014 Fetch single task. Requires orgId query."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let tid = pm.collectionVariables.get('taskId'); if(!tid){ pm.test.skip('taskId empty - run Create Task first'); return; }",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/task/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task",
+                "{{taskId}}"
+              ]
+            },
+            "description": "PUT /api/task/:taskId \u2014 body {orgId required, name?, description?, status? (todo|in_progress|review|done), priority? (low|medium|high|urgent)}. Tenant check via orgId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Design new homepage v2\",\n  \"description\": \"Updated via Postman\",\n  \"status\": \"in_progress\",\n  \"priority\": \"high\",\n  \"orgId\": \"{{orgId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let tid = pm.collectionVariables.get('taskId'); if(!tid){ pm.test.skip('taskId empty - run Create Task first'); return; }",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Task (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/task/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task",
+                "{{taskId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            },
+            "description": "DELETE /api/task/:taskId?orgId={{orgId}} \u2014 Soft delete."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let tid = pm.collectionVariables.get('taskId'); if(!tid){ pm.test.skip('taskId empty - run Create Task first'); return; }",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Task - Cross-Tenant 403 Demo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/task",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "task"
+              ]
+            },
+            "description": "POST as Alice with Acme projectId but Globex orgId2 \u2014 should 403 (project tenant mismatch). Demo cross-tenant guard.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hack attempt\",\n  \"projectId\": \"{{projectId}}\",\n  \"orgId\": \"{{orgId2}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cross-tenant 403', () => pm.expect(pm.response.code).to.be.oneOf([403,404])); console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Delete Project (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/project/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "project",
+                "{{projectId}}"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            },
+            "description": "DELETE /api/project/:projId?orgId={{orgId}} \u2014 Soft delete (sets deleted_at). Requires org_admin + tenant check."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "POST /api/auth/logout \u2014 clears 'tokens' cookie. Requires cookie. Returns 404 if already logged out. After logout, subsequent auth requests should 401."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404])); console.log(pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Logout at end \u2014 after all auth-dependent tests"
+    }
+  ]
+}

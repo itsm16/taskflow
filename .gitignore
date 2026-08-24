@@ -142,3 +142,6 @@ postman
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Learnings (local dev notes, not committed)
+learnings.md

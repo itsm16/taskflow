@@ -13,6 +13,11 @@ import taskRoutes from './modules/task/task.route.js'
 import { getJobs } from './common/utils/api-email.js'
 import ApiError from './common/utils/api-error.js'
 import type { NextFunction, Request, Response } from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const PORT = process.env.PORT || 8000
 
@@ -69,7 +74,7 @@ const args = await initialize({
         projectService,
         taskService
     },
-    paths: './api-doc/paths'
+    paths: path.join(__dirname, 'api-doc/paths')
 })
 
 app.get('/v1/api-doc.json', (req, res) => {

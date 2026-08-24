@@ -69,7 +69,7 @@ const args = await initialize({
         projectService,
         taskService
     },
-    paths: './dist/api-doc/paths'
+    paths: './api-doc/paths'
 })
 
 app.get('/v1/api-doc.json', (req, res) => {
